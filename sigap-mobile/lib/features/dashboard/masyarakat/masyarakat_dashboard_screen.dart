@@ -3,15 +3,19 @@ import '../../../core/constants/app_colors.dart';
 import '../../../routes/app_routes.dart';
 import '../../alarm/presentation/alarm_controller.dart';
 import '../../auth/presentation/auth_controller.dart';
+import '../../notifikasi/presentation/notifikasi_controller.dart';
+import '../../notifikasi/widgets/notification_badge_icon.dart';
 
 class MasyarakatDashboardScreen extends StatelessWidget {
   final AuthController authController;
   final AlarmController alarmController;
+  final NotifikasiController notifikasiController;
 
   const MasyarakatDashboardScreen({
     super.key,
     required this.authController,
     required this.alarmController,
+    required this.notifikasiController,
   });
 
   Future<void> _handleLogout(BuildContext context) async {
@@ -51,6 +55,7 @@ class MasyarakatDashboardScreen extends StatelessWidget {
         title: const Text('Dashboard Masyarakat'),
         backgroundColor: AppColors.surface,
         actions: [
+          NotificationBadgeIcon(notifikasiController: notifikasiController),
           IconButton(
             icon: const Icon(Icons.logout_rounded, color: AppColors.emergencyRed),
             tooltip: 'Logout',

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
+import 'penanganan_model.dart';
+import 'penugasan_model.dart';
 
 /// Data Model representing an Alarm (Laporan Darurat) from SIGAP backend.
 class AlarmModel {
@@ -16,6 +18,11 @@ class AlarmModel {
   final DateTime? updatedAt;
   final Map<String, dynamic>? penggunaData;
 
+  // Workflow integration relations
+  final List<PenugasanModel>? penugasanList;
+  final PenangananModel? penanganan;
+  final int? dokumentasiCount;
+
   const AlarmModel({
     required this.idAlarm,
     required this.idPengguna,
@@ -29,6 +36,9 @@ class AlarmModel {
     this.createdAt,
     this.updatedAt,
     this.penggunaData,
+    this.penugasanList,
+    this.penanganan,
+    this.dokumentasiCount,
   });
 
   factory AlarmModel.fromJson(Map<String, dynamic> json) {
@@ -48,6 +58,24 @@ class AlarmModel {
       return double.tryParse(value.toString()) ?? fallback;
     }
 
+    // Parse nested penugasan collection
+    List<PenugasanModel>? parsedPenugasanList;
+    if (json['penugasan'] is List) {
+      parsedPenugasanList = (json['penugasan'] as List)
+          .whereType<Map<String, dynamic>>()
+          .map((item) => PenugasanModel.fromJson(item))
+          .toList();
+    }
+
+    // Parse nested penanganan
+    PenangananModel? parsedPenanganan;
+    int? parsedDokumentasiCount;
+    if (json['penanganan'] is Map<String, dynamic>) {
+      final penangananJson = json['penanganan'] as Map<String, dynamic>;
+      parsedPenanganan = PenangananModel.fromJson(penangananJson);
+      parsedDokumentasiCount = penangananJson['dokumentasi_count'] as int?;
+    }
+
     return AlarmModel(
       idAlarm: json['id_alarm']?.toString() ?? '',
       idPengguna: json['id_pengguna']?.toString() ?? '',
@@ -63,6 +91,9 @@ class AlarmModel {
       penggunaData: json['pengguna'] is Map<String, dynamic>
           ? json['pengguna'] as Map<String, dynamic>
           : null,
+      penugasanList: parsedPenugasanList,
+      penanganan: parsedPenanganan,
+      dokumentasiCount: parsedDokumentasiCount,
     );
   }
 
@@ -82,6 +113,20 @@ class AlarmModel {
       if (penggunaData != null) 'pengguna': penggunaData,
     };
   }
+
+  // --- Workflow Getters ---
+
+  /// Returns the latest active assignment if any exists.
+  PenugasanModel? get latestPenugasan =>
+      (penugasanList != null && penugasanList!.isNotEmpty)
+          ? penugasanList!.first
+          : null;
+
+  /// True if a team has been assigned to this alarm.
+  bool get hasPenugasan => latestPenugasan != null;
+
+  /// True if field handling has commenced.
+  bool get hasPenanganan => penanganan != null;
 
   // --- Helper Getters ---
 

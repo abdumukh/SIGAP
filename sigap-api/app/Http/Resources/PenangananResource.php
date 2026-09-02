@@ -45,6 +45,12 @@ class PenangananResource extends JsonResource
                     'role'         => $this->petugas->role,
                 ] : null;
             }),
+            'korban'            => $this->whenLoaded('korban', function () {
+                return KorbanResource::collection($this->korban);
+            }),
+            'logistik'          => $this->whenLoaded('logistik', function () {
+                return LogistikResource::collection($this->logistik);
+            }),
             'created_at'        => $this->created_at?->toIso8601String(),
             'updated_at'        => $this->updated_at?->toIso8601String(),
         ];

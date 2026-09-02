@@ -51,15 +51,15 @@ class AuthenticationTest extends TestCase
     }
 
     /**
-     * 2. Test Masyarakat login (budi@example.com / password123).
+     * 2. Test Masyarakat login (masyarakat@sigap.test / Sigap123!).
      * 12. Password not in response.
      * 13. Actor masyarakat correct.
      */
     public function test_masyarakat_can_login(): void
     {
         $response = $this->postJson('/api/auth/login', [
-            'email'    => 'budi@example.com',
-            'password' => 'password123',
+            'email'    => 'masyarakat@sigap.test',
+            'password' => 'Sigap123!',
         ]);
 
         $response->assertStatus(200)
@@ -76,14 +76,14 @@ class AuthenticationTest extends TestCase
     }
 
     /**
-     * 3. Test Admin login (admin@sigap.go.id / admin123).
+     * 3. Test Admin login (admin@sigap.test / Sigap123!).
      * 14. Actor admin correct.
      */
     public function test_admin_can_login(): void
     {
         $response = $this->postJson('/api/auth/login', [
-            'email'    => 'admin@sigap.go.id',
-            'password' => 'admin123',
+            'email'    => 'admin@sigap.test',
+            'password' => 'Sigap123!',
         ]);
 
         $response->assertStatus(200)
@@ -98,14 +98,14 @@ class AuthenticationTest extends TestCase
     }
 
     /**
-     * 4. Test Petugas login (ahmad@sigap.go.id / petugas123).
+     * 4. Test Petugas login (petugas@sigap.test / Sigap123!).
      * 15. Actor petugas correct.
      */
     public function test_petugas_can_login(): void
     {
         $response = $this->postJson('/api/auth/login', [
-            'email'    => 'ahmad@sigap.go.id',
-            'password' => 'petugas123',
+            'email'    => 'petugas@sigap.test',
+            'password' => 'Sigap123!',
         ]);
 
         $response->assertStatus(200)
@@ -120,14 +120,14 @@ class AuthenticationTest extends TestCase
     }
 
     /**
-     * 5. Test Ketua Tim login (rahmat@sigap.go.id / petugas123).
+     * 5. Test Ketua Tim login (ketua@sigap.test / Sigap123!).
      * 16. Actor ketua_tim correct.
      */
     public function test_ketua_tim_can_login(): void
     {
         $response = $this->postJson('/api/auth/login', [
-            'email'    => 'rahmat@sigap.go.id',
-            'password' => 'petugas123',
+            'email'    => 'ketua@sigap.test',
+            'password' => 'Sigap123!',
         ]);
 
         $response->assertStatus(200)
@@ -147,7 +147,7 @@ class AuthenticationTest extends TestCase
     public function test_login_with_wrong_password_returns_401(): void
     {
         $response = $this->postJson('/api/auth/login', [
-            'email'    => 'budi@example.com',
+            'email'    => 'masyarakat@sigap.test',
             'password' => 'wrongpassword',
         ]);
 
@@ -181,8 +181,8 @@ class AuthenticationTest extends TestCase
     public function test_me_with_valid_token_returns_200(): void
     {
         $login = $this->postJson('/api/auth/login', [
-            'email'    => 'budi@example.com',
-            'password' => 'password123',
+            'email'    => 'masyarakat@sigap.test',
+            'password' => 'Sigap123!',
         ]);
 
         $token = $login->json('data.token');
@@ -218,8 +218,8 @@ class AuthenticationTest extends TestCase
     public function test_logout_invalidates_token(): void
     {
         $login = $this->postJson('/api/auth/login', [
-            'email'    => 'budi@example.com',
-            'password' => 'password123',
+            'email'    => 'masyarakat@sigap.test',
+            'password' => 'Sigap123!',
         ]);
 
         $token = $login->json('data.token');

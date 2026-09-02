@@ -3,6 +3,10 @@ import '../../../core/constants/app_colors.dart';
 import '../../../routes/app_routes.dart';
 import '../../alarm/presentation/alarm_controller.dart';
 import '../../auth/presentation/auth_controller.dart';
+import '../../penanganan/presentation/dokumentasi_controller.dart';
+import '../../penanganan/presentation/korban_controller.dart';
+import '../../penanganan/presentation/logistik_controller.dart';
+import '../../penanganan/presentation/penanganan_controller.dart';
 import '../../tim/presentation/tim_controller.dart';
 import '../widgets/penugasan_card.dart';
 import 'penugasan_controller.dart';
@@ -14,6 +18,10 @@ class PenugasanListScreen extends StatefulWidget {
   final AuthController authController;
   final AlarmController alarmController;
   final TimController timController;
+  final PenangananController? penangananController;
+  final DokumentasiController? dokumentasiController;
+  final KorbanController? korbanController;
+  final LogistikController? logistikController;
 
   const PenugasanListScreen({
     super.key,
@@ -21,6 +29,10 @@ class PenugasanListScreen extends StatefulWidget {
     required this.authController,
     required this.alarmController,
     required this.timController,
+    this.penangananController,
+    this.dokumentasiController,
+    this.korbanController,
+    this.logistikController,
   });
 
   @override
@@ -113,7 +125,8 @@ class _PenugasanListScreenState extends State<PenugasanListScreen> {
                 children: [
                   _buildFilterChip('Semua', null),
                   _buildFilterChip('Menunggu', 'menunggu'),
-                  _buildFilterChip('Dalam Proses', 'proses'),
+                  _buildFilterChip('Diterima', 'diterima'),
+                  _buildFilterChip('Berangkat', 'berangkat'),
                   _buildFilterChip('Selesai', 'selesai'),
                   _buildFilterChip('Ditolak', 'ditolak'),
                 ],
@@ -224,6 +237,11 @@ class _PenugasanListScreenState extends State<PenugasanListScreen> {
                                   idPenugasan: item.idPenugasan,
                                   penugasanController:
                                       widget.penugasanController,
+                                  authController: widget.authController,
+                                  penangananController: widget.penangananController,
+                                  dokumentasiController: widget.dokumentasiController,
+                                  korbanController: widget.korbanController,
+                                  logistikController: widget.logistikController,
                                 ),
                               ),
                             );

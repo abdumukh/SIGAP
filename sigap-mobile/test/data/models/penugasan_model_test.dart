@@ -74,9 +74,9 @@ void main() {
         idAlarm: 'ALM-002',
         idTim: 'TIM-001',
         idKetuaTim: 'PTG-001',
-        statusPenugasan: 'proses',
+        statusPenugasan: 'berangkat',
       );
-      expect(p1.isProses, isTrue);
+      expect(p1.isBerangkat, isTrue);
       expect(p1.statusDisplay, 'Dalam Proses');
 
       const p2 = PenugasanModel(
@@ -88,6 +88,16 @@ void main() {
       );
       expect(p2.isSelesai, isTrue);
       expect(p2.statusDisplay, 'Selesai');
+
+      const p3 = PenugasanModel(
+        idPenugasan: 'TGS-004',
+        idAlarm: 'ALM-004',
+        idTim: 'TIM-001',
+        idKetuaTim: 'PTG-001',
+        statusPenugasan: 'diterima',
+      );
+      expect(p3.isDiterima, isTrue);
+      expect(p3.statusDisplay, 'Diterima');
     });
   });
 }

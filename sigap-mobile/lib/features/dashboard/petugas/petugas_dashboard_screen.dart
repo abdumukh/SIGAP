@@ -3,15 +3,25 @@ import '../../../core/constants/app_colors.dart';
 import '../../../routes/app_routes.dart';
 import '../../alarm/presentation/alarm_controller.dart';
 import '../../auth/presentation/auth_controller.dart';
+import '../../laporan/presentation/laporan_controller.dart';
+import '../../monitoring/presentation/monitoring_controller.dart';
+import '../../notifikasi/presentation/notifikasi_controller.dart';
+import '../../notifikasi/widgets/notification_badge_icon.dart';
 
 class PetugasDashboardScreen extends StatelessWidget {
   final AuthController authController;
   final AlarmController alarmController;
+  final NotifikasiController notifikasiController;
+  final MonitoringController monitoringController;
+  final LaporanController laporanController;
 
   const PetugasDashboardScreen({
     super.key,
     required this.authController,
     required this.alarmController,
+    required this.notifikasiController,
+    required this.monitoringController,
+    required this.laporanController,
   });
 
   Future<void> _handleLogout(BuildContext context) async {
@@ -42,6 +52,71 @@ class PetugasDashboardScreen extends StatelessWidget {
     }
   }
 
+  Widget _buildMenuCard({
+    required BuildContext context,
+    required String route,
+    required IconData icon,
+    required Color iconColor,
+    required Color iconBgColor,
+    required String title,
+    required String subtitle,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: InkWell(
+        onTap: () {
+          Navigator.of(context).pushNamed(route);
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: iconBgColor,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: iconColor, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = authController.currentUser;
@@ -51,6 +126,7 @@ class PetugasDashboardScreen extends StatelessWidget {
         title: const Text('Dashboard Petugas'),
         backgroundColor: AppColors.surface,
         actions: [
+          NotificationBadgeIcon(notifikasiController: notifikasiController),
           IconButton(
             icon: const Icon(Icons.logout_rounded, color: AppColors.emergencyRed),
             tooltip: 'Logout',
@@ -143,59 +219,73 @@ class PetugasDashboardScreen extends StatelessWidget {
               ),
               const SizedBox(height: 24),
 
-              // Operational Card: Monitoring Alarm
-              InkWell(
-                onTap: () {
-                  Navigator.of(context).pushNamed(AppRoutes.alarms);
-                },
-                borderRadius: BorderRadius.circular(16),
-                child: Container(
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppColors.rolePetugas.withAlpha(30),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.notifications_active_rounded, color: AppColors.rolePetugas, size: 24),
-                      ),
-                      SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Daftar Alarm Masuk',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                            SizedBox(height: 2),
-                            Text(
-                              'Lihat daftar laporan alarm darurat dan verifikasi',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
-                    ],
-                  ),
+              // Operational Section Title
+              const Text(
+                'Menu Operasional',
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 12),
+
+              // Operational Card 1: Penanganan Saya
+              _buildMenuCard(
+                context: context,
+                route: AppRoutes.penanganan,
+                icon: Icons.medical_services_rounded,
+                iconColor: AppColors.rolePetugas,
+                iconBgColor: AppColors.rolePetugas.withAlpha(30),
+                title: 'Penanganan Saya',
+                subtitle: 'Kelola status dan dokumentasi penanganan darurat',
+              ),
+
+              // Operational Card 2: Penugasan Tim
+              _buildMenuCard(
+                context: context,
+                route: AppRoutes.penugasan,
+                icon: Icons.assignment_rounded,
+                iconColor: AppColors.primary,
+                iconBgColor: AppColors.primary.withAlpha(25),
+                title: 'Penugasan Lapangan',
+                subtitle: 'Lihat daftar penugasan tim operasional',
+              ),
+
+              // Operational Card 3: Monitoring Alarm
+              _buildMenuCard(
+                context: context,
+                route: AppRoutes.alarms,
+                icon: Icons.notifications_active_rounded,
+                iconColor: AppColors.warning,
+                iconBgColor: AppColors.warningLight,
+                title: 'Daftar Alarm Masuk',
+                subtitle: 'Lihat daftar laporan alarm darurat dan verifikasi',
+              ),
+
+              // Operational Card 4: Monitoring Dashboard
+              _buildMenuCard(
+                context: context,
+                route: AppRoutes.monitoring,
+                icon: Icons.dashboard_rounded,
+                iconColor: AppColors.info,
+                iconBgColor: AppColors.infoLight,
+                title: 'Dashboard Monitoring',
+                subtitle: 'Statistik operasional tugas saya',
+              ),
+
+              // Operational Card 5: Laporan
+              _buildMenuCard(
+                context: context,
+                route: AppRoutes.laporan,
+                icon: Icons.assessment_rounded,
+                iconColor: AppColors.rolePetugas,
+                iconBgColor: AppColors.rolePetugas.withAlpha(25),
+                title: 'Laporan & Rekap',
+                subtitle: 'Rekap data alarm, penugasan, penanganan',
+              ),
+
+              const SizedBox(height: 16),
 
               // Logout Button
               OutlinedButton.icon(

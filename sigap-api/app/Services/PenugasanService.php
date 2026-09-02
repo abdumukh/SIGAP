@@ -8,6 +8,8 @@ use App\Models\Armada;
 use App\Models\Penugasan;
 use App\Models\Petugas;
 use App\Models\Tim;
+use App\Services\NotifikasiService;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -36,6 +38,41 @@ class PenugasanService
             'petugasArmada',
             'armada',
         ])->orderByDesc('waktu_penugasan')->get();
+    }
+
+    public function getPenugasanListForUser(Authenticatable $user): Collection
+    {
+        $query = Penugasan::with([
+            'alarm',
+            'tim',
+            'ketuaTim',
+            'petugasArmada',
+            'armada',
+        ]);
+
+        $actorService = app(ActorService::class);
+        $actor = $actorService->resolveActor($user);
+
+        if ($actor === 'ketua_tim') {
+            $query->where(function ($q) use ($user) {
+                $q->where('id_ketua_tim', $user->id_petugas)
+                    ->orWhereHas('tim.anggotaTim', function ($at) use ($user) {
+                        $at->where('id_petugas', $user->id_petugas)
+                            ->where('status_anggota', 'aktif');
+                    });
+            });
+        } elseif ($actor === 'petugas') {
+            $query->where(function ($q) use ($user) {
+                $q->where('id_petugas_armada', $user->id_petugas)
+                    ->orWhereHas('tim.anggotaTim', function ($at) use ($user) {
+                        $at->where('id_petugas', $user->id_petugas)
+                            ->where('status_anggota', 'aktif');
+                    });
+            });
+        }
+        // admin: no filter (see all)
+
+        return $query->orderByDesc('waktu_penugasan')->get();
     }
 
     public function getPenugasanById(string $idPenugasan): ?Penugasan
@@ -196,7 +233,117 @@ class PenugasanService
                 Armada::where('id_armada', $idArmada)->update(['status_armada' => 'digunakan']);
             }
 
+            // Notify assigned personnel
+            $this->notifyPenugasanCreated($penugasan, $alarm, $ketuaTim, $idPetugasArmada ? $petugasArmada : null);
+            // Notify alarm owner
+            $this->notifyAlarmOwnerPenugasan($alarm, $penugasan);
+
             return $this->getPenugasanById($penugasan->id_penugasan);
         });
+    }
+
+    public function updatePenugasanStatus(string $idPenugasan, array $data): Penugasan
+    {
+        return DB::transaction(function () use ($idPenugasan, $data) {
+            /** @var Penugasan|null $penugasan */
+            $penugasan = Penugasan::where('id_penugasan', $idPenugasan)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$penugasan) {
+                throw ValidationException::withMessages([
+                    'id_penugasan' => ['Penugasan tidak ditemukan.'],
+                ]);
+            }
+
+            $targetStatus = $data['status_penugasan'];
+            $currentStatus = $penugasan->status_penugasan;
+
+            $validTransitions = [
+                'menunggu'  => ['diterima', 'ditolak'],
+                'diterima'  => ['berangkat'],
+                'berangkat' => ['selesai'],
+                'ditolak'   => [],
+                'selesai'   => [],
+            ];
+
+            if (!in_array($targetStatus, $validTransitions[$currentStatus] ?? [], true)) {
+                throw ValidationException::withMessages([
+                    'status_penugasan' => ["Transisi dari '{$currentStatus}' ke '{$targetStatus}' tidak valid."],
+                ]);
+            }
+
+            $penugasan->status_penugasan = $targetStatus;
+
+            if (array_key_exists('note', $data)) {
+                $penugasan->note = $data['note'];
+            }
+
+            $penugasan->save();
+
+            if (in_array($targetStatus, ['ditolak', 'selesai']) && $penugasan->id_armada) {
+                Armada::where('id_armada', $penugasan->id_armada)
+                    ->update(['status_armada' => 'tersedia']);
+            }
+
+            return $this->getPenugasanById($penugasan->id_penugasan);
+        });
+    }
+
+    private function notifyPenugasanCreated(Penugasan $penugasan, Alarm $alarm, Petugas $ketuaTim, ?Petugas $petugasArmada): void
+    {
+        $notifikasiService = app(NotifikasiService::class);
+
+        $notifikasiService->createNotifikasi(
+            $ketuaTim->id_petugas,
+            'ketua_tim',
+            'PENUGASAN_CREATED',
+            'Penugasan Baru',
+            "Anda ditugaskan sebagai Ketua Tim untuk laporan {$alarm->jenis_darurat} ({$alarm->id_alarm}).",
+            ['id_alarm' => $alarm->id_alarm, 'id_penugasan' => $penugasan->id_penugasan]
+        );
+
+        if ($petugasArmada) {
+            $notifikasiService->createNotifikasi(
+                $petugasArmada->id_petugas,
+                'petugas',
+                'PENUGASAN_CREATED',
+                'Penugasan Baru',
+                "Anda ditugaskan sebagai Petugas Armada untuk laporan {$alarm->jenis_darurat} ({$alarm->id_alarm}).",
+                ['id_alarm' => $alarm->id_alarm, 'id_penugasan' => $penugasan->id_penugasan]
+            );
+        }
+
+        // Notify other active team members
+        $anggota = \App\Models\AnggotaTim::where('id_tim', $penugasan->id_tim)
+            ->where('status_anggota', 'aktif')
+            ->where('id_petugas', '!=', $ketuaTim->id_petugas)
+            ->when($petugasArmada, fn($q) => $q->where('id_petugas', '!=', $petugasArmada->id_petugas))
+            ->get();
+
+        foreach ($anggota as $member) {
+            $notifikasiService->createNotifikasi(
+                $member->id_petugas,
+                'petugas',
+                'PENUGASAN_CREATED',
+                'Penugasan Baru',
+                "Tim Anda ditugaskan untuk laporan {$alarm->jenis_darurat} ({$alarm->id_alarm}).",
+                ['id_alarm' => $alarm->id_alarm, 'id_penugasan' => $penugasan->id_penugasan]
+            );
+        }
+    }
+
+    private function notifyAlarmOwnerPenugasan(Alarm $alarm, Penugasan $penugasan): void
+    {
+        $notifikasiService = app(NotifikasiService::class);
+
+        $notifikasiService->createNotifikasi(
+            $alarm->id_pengguna,
+            'masyarakat',
+            'PENUGASAN_CREATED',
+            'Tim Ditugaskan',
+            "Laporan {$alarm->jenis_darurat} ({$alarm->id_alarm}) telah ditugaskan ke tim penanganan.",
+            ['id_alarm' => $alarm->id_alarm, 'id_penugasan' => $penugasan->id_penugasan]
+        );
     }
 }

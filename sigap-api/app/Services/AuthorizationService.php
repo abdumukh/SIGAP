@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Alarm;
 use App\Models\AnggotaTim;
 use App\Models\Dokumentasi;
+use App\Models\Notifikasi;
 use App\Models\Penanganan;
 use App\Models\Penugasan;
 use Illuminate\Contracts\Auth\Authenticatable;
@@ -217,9 +218,125 @@ class AuthorizationService
     }
 
     /**
+     * Verifies if current user can update Penugasan status (Admin only).
+     */
+    public function canUpdatePenugasanStatus(?Authenticatable $user): bool
+    {
+        return $this->canManageTim($user);
+    }
+
+    /**
+     * Verifies if current user can list Penugasan (Admin, Petugas, Ketua Tim).
+     */
+    public function canListPenugasan(?Authenticatable $user): bool
+    {
+        if (!$user) {
+            return false;
+        }
+
+        return !$this->isMasyarakat($user);
+    }
+
+    /**
+     * Verifies if current user can view detail of a Penugasan.
+     */
+    public function canViewPenugasan(?Authenticatable $user, Penugasan $penugasan): bool
+    {
+        if (!$user) {
+            return false;
+        }
+
+        if ($this->isAdmin($user)) {
+            return true;
+        }
+
+        if ($this->isMasyarakat($user)) {
+            return false;
+        }
+
+        return $this->canPetugasExecutePenugasan($user, $penugasan);
+    }
+
+    /**
      * Verifies if current user can list Dokumentasi.
      */
     public function canListDokumentasi(?Authenticatable $user): bool
+    {
+        if (!$user) {
+            return false;
+        }
+
+        return !$this->isMasyarakat($user);
+    }
+
+    /**
+     * Verifies if current user can list notifikasi.
+     */
+    public function canListNotifikasi(?Authenticatable $user): bool
+    {
+        if (!$user) {
+            return false;
+        }
+
+        return !$this->isMasyarakat($user);
+    }
+
+    /**
+     * Verifies if current user can view notifikasi detail.
+     */
+    public function canViewNotifikasi(?Authenticatable $user, Notifikasi $notifikasi): bool
+    {
+        if (!$user) {
+            return false;
+        }
+
+        if ($this->isAdmin($user)) {
+            return true;
+        }
+
+        if ($this->isMasyarakat($user)) {
+            return $notifikasi->id_actor === $user->id_pengguna
+                && $notifikasi->actor_role === 'masyarakat';
+        }
+
+        if (!$this->isPetugas($user) && !$this->isKetuaTim($user)) {
+            return false;
+        }
+
+        return $notifikasi->id_actor === $user->id_petugas
+            && ($notifikasi->actor_role === 'petugas' || $notifikasi->actor_role === 'ketua_tim');
+    }
+
+    /**
+     * Verifies if current user can mark notifikasi as read.
+     */
+    public function canMarkNotifikasiRead(?Authenticatable $user, Notifikasi $notifikasi): bool
+    {
+        if (!$user) {
+            return false;
+        }
+
+        if ($this->isAdmin($user)) {
+            return true;
+        }
+
+        if ($this->isMasyarakat($user)) {
+            return $notifikasi->id_actor === $user->id_pengguna
+                && $notifikasi->actor_role === 'masyarakat';
+        }
+
+        if (!$this->isPetugas($user) && !$this->isKetuaTim($user)) {
+            return false;
+        }
+
+        return $notifikasi->id_actor === $user->id_petugas
+            && ($notifikasi->actor_role === 'petugas' || $notifikasi->actor_role === 'ketua_tim');
+    }
+
+    /**
+     * Verifies if current user can mark all notifikasi as read.
+     */
+    public function canMarkAllNotifikasiRead(?Authenticatable $user): bool
     {
         if (!$user) {
             return false;
@@ -274,5 +391,37 @@ class AuthorizationService
         }
 
         return $dokumentasi->id_petugas === $user->id_petugas;
+    }
+
+    /**
+     * Verifies if current user can access monitoring menu.
+     */
+    public function canAccessMonitoring(?Authenticatable $user): bool
+    {
+        if (!$user) {
+            return false;
+        }
+
+        return !$this->isMasyarakat($user);
+    }
+
+    /**
+     * Verifies if current user can access specific laporan type based on Section 12.
+     */
+    public function canAccessLaporanType(?Authenticatable $user, string $type): bool
+    {
+        if (!$user) {
+            return false;
+        }
+
+        $actor = $this->actorService->resolveActor($user);
+
+        return match ($actor) {
+            'admin' => in_array($type, ['alarm', 'penugasan', 'penanganan', 'pengguna', 'petugas'], true),
+            'ketua_tim' => in_array($type, ['alarm', 'penugasan', 'penanganan', 'petugas'], true),
+            'petugas' => in_array($type, ['alarm', 'penugasan', 'penanganan'], true),
+            'masyarakat' => in_array($type, ['alarm', 'penanganan'], true),
+            default => false,
+        };
     }
 }

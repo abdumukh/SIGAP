@@ -20,7 +20,7 @@ class ApiConfig {
   static const String lanBaseUrl = 'http://$defaultLanIp:$defaultPort/api';
 
   /// Current active Base URL.
-  /// Defaults to [lanBaseUrl] for physical device testing as requested.
+  /// Defaults to [lanBaseUrl] for physical Android device testing over Wi-Fi.
   static String baseUrl = lanBaseUrl;
 
   /// Timeout configurations.

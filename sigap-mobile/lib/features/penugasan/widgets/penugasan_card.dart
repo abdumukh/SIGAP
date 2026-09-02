@@ -17,8 +17,10 @@ class PenugasanCard extends StatelessWidget {
     switch (penugasan.statusPenugasan) {
       case 'menunggu':
         return AppColors.warning;
-      case 'proses':
+      case 'diterima':
         return AppColors.info;
+      case 'berangkat':
+        return AppColors.primary;
       case 'selesai':
         return AppColors.success;
       case 'ditolak':
@@ -32,8 +34,10 @@ class PenugasanCard extends StatelessWidget {
     switch (penugasan.statusPenugasan) {
       case 'menunggu':
         return AppColors.warningLight;
-      case 'proses':
+      case 'diterima':
         return AppColors.infoLight;
+      case 'berangkat':
+        return AppColors.primaryLight;
       case 'selesai':
         return AppColors.successLight;
       case 'ditolak':

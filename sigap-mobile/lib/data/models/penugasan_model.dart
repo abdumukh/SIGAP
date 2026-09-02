@@ -122,7 +122,8 @@ class PenugasanModel {
 
   // --- Status helpers ---
   bool get isMenunggu => statusPenugasan == 'menunggu';
-  bool get isProses => statusPenugasan == 'proses';
+  bool get isDiterima => statusPenugasan == 'diterima';
+  bool get isBerangkat => statusPenugasan == 'berangkat';
   bool get isSelesai => statusPenugasan == 'selesai';
   bool get isDitolak => statusPenugasan == 'ditolak';
 
@@ -132,7 +133,9 @@ class PenugasanModel {
     switch (statusPenugasan) {
       case 'menunggu':
         return 'Menunggu';
-      case 'proses':
+      case 'diterima':
+        return 'Diterima';
+      case 'berangkat':
         return 'Dalam Proses';
       case 'selesai':
         return 'Selesai';

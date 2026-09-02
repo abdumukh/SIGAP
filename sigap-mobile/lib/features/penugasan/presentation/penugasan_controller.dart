@@ -16,7 +16,7 @@ class PenugasanController extends ChangeNotifier {
   PenugasanModel? _selectedPenugasan;
   String? _errorMessage;
   String? _successMessage;
-  String? _selectedFilter; // null = all, 'menunggu', 'proses', 'selesai', 'ditolak'
+  String? _selectedFilter; // null = all, 'menunggu', 'diterima', 'berangkat', 'selesai', 'ditolak'
 
   PenugasanStateStatus get status => _status;
   List<PenugasanModel> get penugasanList => List.unmodifiable(_penugasanList);

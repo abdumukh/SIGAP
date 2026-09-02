@@ -98,5 +98,44 @@ void main() {
       expect(json['jenis_darurat'], 'Kebakaran');
       expect(json['status_alarm'], 'menunggu');
     });
+
+    test('parses nested penugasan and penanganan workflow relations correctly', () {
+      final json = {
+        'id_alarm': 'ALM-010',
+        'id_pengguna': 'USR-001',
+        'jenis_darurat': 'Kebakaran',
+        'latitude': -6.2,
+        'longitude': 106.8,
+        'status_alarm': 'diverifikasi',
+        'penugasan': [
+          {
+            'id_penugasan': 'TGS-001',
+            'id_alarm': 'ALM-010',
+            'id_tim': 'TIM-001',
+            'id_ketua_tim': 'PET-001',
+            'status_penugasan': 'berangkat',
+            'tim': {'id_tim': 'TIM-001', 'nama_tim': 'Tim Tim Alfa'},
+          }
+        ],
+        'penanganan': {
+          'id_penanganan': 'PNG-001',
+          'id_alarm': 'ALM-010',
+          'id_penugasan': 'TGS-001',
+          'id_petugas': 'PET-001',
+          'status_penanganan': 'di_lokasi',
+          'dokumentasi_count': 3,
+        },
+      };
+
+      final alarm = AlarmModel.fromJson(json);
+
+      expect(alarm.hasPenugasan, isTrue);
+      expect(alarm.hasPenanganan, isTrue);
+      expect(alarm.latestPenugasan?.idPenugasan, 'TGS-001');
+      expect(alarm.latestPenugasan?.timNama, 'Tim Tim Alfa');
+      expect(alarm.penanganan?.idPenanganan, 'PNG-001');
+      expect(alarm.penanganan?.statusPenanganan, 'di_lokasi');
+      expect(alarm.dokumentasiCount, 3);
+    });
   });
 }

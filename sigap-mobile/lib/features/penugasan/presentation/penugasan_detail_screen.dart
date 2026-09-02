@@ -1,16 +1,33 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../auth/presentation/auth_controller.dart';
+import '../../penanganan/presentation/create_penanganan_screen.dart';
+import '../../penanganan/presentation/dokumentasi_controller.dart';
+import '../../penanganan/presentation/korban_controller.dart';
+import '../../penanganan/presentation/logistik_controller.dart';
+import '../../penanganan/presentation/penanganan_controller.dart';
+import '../../penanganan/presentation/penanganan_detail_screen.dart';
 import 'penugasan_controller.dart';
 
-/// Detailed view of a single Penugasan with alarm, team, personnel, and vehicle specs.
+/// Detailed view of a single Penugasan with alarm, team, personnel, vehicle specs, and action trigger.
 class PenugasanDetailScreen extends StatefulWidget {
   final String idPenugasan;
   final PenugasanController penugasanController;
+  final AuthController? authController;
+  final PenangananController? penangananController;
+  final DokumentasiController? dokumentasiController;
+  final KorbanController? korbanController;
+  final LogistikController? logistikController;
 
   const PenugasanDetailScreen({
     super.key,
     required this.idPenugasan,
     required this.penugasanController,
+    this.authController,
+    this.penangananController,
+    this.dokumentasiController,
+    this.korbanController,
+    this.logistikController,
   });
 
   @override
@@ -24,6 +41,100 @@ class _PenugasanDetailScreenState extends State<PenugasanDetailScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       widget.penugasanController.fetchPenugasanDetail(widget.idPenugasan);
     });
+  }
+
+  bool _canStartPenanganan() {
+    if (widget.authController == null) return false;
+    final role = widget.authController!.currentUser?.role.toLowerCase();
+    return role == 'petugas' || role == 'ketua_tim';
+  }
+
+  bool _hasExistingPenanganan() {
+    if (widget.penangananController == null) return false;
+    final list = widget.penangananController!.penangananList;
+    return list.any((p) => p.idPenugasan == widget.idPenugasan);
+  }
+
+  Widget _buildPenangananButton() {
+    final canStart = _canStartPenanganan();
+    final hasExisting = _hasExistingPenanganan();
+
+    if (!canStart) return const SizedBox.shrink();
+
+    if (hasExisting) {
+      // Already has penanganan - show "LIHAT" button
+      return ElevatedButton.icon(
+        icon: const Icon(Icons.remove_circle_outlined),
+        label: const Text(
+          'LIHAT PENANGANAN',
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.5,
+          ),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.info,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+        onPressed: () {
+          final controller = widget.penangananController!;
+            final existingPenanganan = controller.penangananList
+              .firstWhere((p) => p.idPenugasan == widget.idPenugasan);
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => PenangananDetailScreen(
+                  idPenanganan: existingPenanganan.idPenanganan,
+                  penangananController: widget.penangananController!,
+                  dokumentasiController: widget.dokumentasiController!,
+                  korbanController: widget.korbanController!,
+                  logistikController: widget.logistikController!,
+                  authController: widget.authController!,
+                ),
+              ),
+            );
+        },
+      );
+    } else {
+      // No existing penanganan - show "MULAI PENANGANAN"
+      return ElevatedButton.icon(
+        icon: const Icon(Icons.medical_services_rounded),
+        label: const Text(
+          'MULAI PENANGANAN',
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.5,
+          ),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+        onPressed: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => CreatePenangananScreen(
+                idPenugasan: widget.penugasanController.selectedPenugasan!.idPenugasan,
+                idAlarm: widget.penugasanController.selectedPenugasan!.idAlarm,
+                alarmJenisDarurat: widget.penugasanController.selectedPenugasan!.alarmJenisDarurat,
+                penangananController: widget.penangananController!,
+                dokumentasiController: widget.dokumentasiController!,
+                korbanController: widget.korbanController!,
+                logistikController: widget.logistikController!,
+                authController: widget.authController!,
+              ),
+            ),
+          );
+        },
+      );
+    }
   }
 
   Widget _buildSectionHeader(String title, IconData icon) {
@@ -116,6 +227,8 @@ class _PenugasanDetailScreenState extends State<PenugasanDetailScreen> {
               );
             }
 
+            final canStart = _canStartPenanganan();
+
             return RefreshIndicator(
               onRefresh: () async => widget.penugasanController
                   .fetchPenugasanDetail(widget.idPenugasan),
@@ -204,6 +317,12 @@ class _PenugasanDetailScreenState extends State<PenugasanDetailScreen> {
                       ),
                     ),
                     const SizedBox(height: 24),
+
+                    // Operational Action Button for Authorized Field Personnel
+                    if (canStart && widget.penangananController != null && widget.dokumentasiController != null) ...[
+                      _buildPenangananButton(),
+                      const SizedBox(height: 24),
+                    ],
 
                     // Section 1: Alarm Terkait
                     _buildSectionHeader('Informasi Alarm Darurat', Icons.emergency_rounded),

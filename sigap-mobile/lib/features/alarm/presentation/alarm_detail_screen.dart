@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../data/models/alarm_model.dart';
+import '../../../routes/app_routes.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../widgets/alarm_status_badge.dart';
 import 'alarm_controller.dart';
@@ -165,6 +166,7 @@ class _AlarmDetailScreenState extends State<AlarmDetailScreen> {
     required String label,
     required String value,
     Color? valueColor,
+    FontWeight? valueWeight,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -191,10 +193,304 @@ class _AlarmDetailScreenState extends State<AlarmDetailScreen> {
               style: TextStyle(
                 color: valueColor ?? AppColors.textPrimary,
                 fontSize: 14,
-                fontWeight: FontWeight.w600,
+                fontWeight: valueWeight ?? FontWeight.w600,
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimelineStep({
+    required int stepNumber,
+    required String title,
+    required String? timestamp,
+    required bool isDone,
+    required bool isCurrent,
+    required bool isLast,
+  }) {
+    final stepColor = isDone
+        ? AppColors.success
+        : (isCurrent ? AppColors.primary : AppColors.textMuted);
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Column(
+          children: [
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: isDone
+                    ? AppColors.success
+                    : (isCurrent ? AppColors.primary : AppColors.divider),
+                shape: BoxShape.circle,
+                border: Border.all(color: stepColor, width: 2),
+              ),
+              child: Center(
+                child: isDone
+                    ? const Icon(Icons.check_rounded, size: 16, color: Colors.white)
+                    : Text(
+                        '$stepNumber',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: isCurrent ? Colors.white : AppColors.textMuted,
+                        ),
+                      ),
+              ),
+            ),
+            if (!isLast)
+              Container(
+                width: 2,
+                height: 36,
+                color: isDone ? AppColors.success : AppColors.divider,
+              ),
+          ],
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 4, bottom: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: isCurrent || isDone ? FontWeight.w800 : FontWeight.w600,
+                    color: isCurrent || isDone ? AppColors.textPrimary : AppColors.textMuted,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  timestamp != null && timestamp.isNotEmpty
+                      ? timestamp
+                      : (isDone || isCurrent ? 'Sedang berlangsung' : 'Menunggu tahapan sebelumnya'),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isDone || isCurrent ? AppColors.textSecondary : AppColors.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWorkflowProgress(AlarmModel alarm, BuildContext context, {required bool isStaffOrAdmin}) {
+    final penugasan = alarm.latestPenugasan;
+    final penanganan = alarm.penanganan;
+
+    // Determine current workflow step
+    final isPending = alarm.isPending;
+    final isRejected = alarm.isRejected;
+    final isVerified = alarm.isVerified && !alarm.hasPenugasan;
+    final isAssigned = alarm.hasPenugasan && !alarm.hasPenanganan;
+    final isInProgress = alarm.hasPenanganan && penanganan != null && !penanganan.isSelesai;
+    final isCompleted = alarm.isCompleted;
+
+    String progressTitle;
+    IconData progressIcon;
+    Color progressColor;
+
+    if (isPending) {
+      progressTitle = 'Menunggu Verifikasi';
+      progressIcon = Icons.hourglass_top_rounded;
+      progressColor = AppColors.warning;
+    } else if (isRejected) {
+      progressTitle = 'Laporan Ditolak';
+      progressIcon = Icons.cancel_rounded;
+      progressColor = AppColors.error;
+    } else if (isVerified) {
+      progressTitle = 'Menugaskan Tim Operasional';
+      progressIcon = Icons.assignment_ind_rounded;
+      progressColor = AppColors.info;
+    } else if (isAssigned) {
+      progressTitle = 'Tim Ditugaskan, Menunggu Penanganan';
+      progressIcon = Icons.people_alt_rounded;
+      progressColor = AppColors.roleKetuaTim;
+    } else if (isInProgress) {
+      progressTitle = 'Penanganan Berlangsung';
+      progressIcon = Icons.medical_services_rounded;
+      progressColor = AppColors.primary;
+    } else if (isCompleted) {
+      progressTitle = 'Penanganan Selesai';
+      progressIcon = Icons.check_circle_rounded;
+      progressColor = AppColors.success;
+    } else {
+      progressTitle = 'Status Tidak Diketahui';
+      progressIcon = Icons.help_outline_rounded;
+      progressColor = AppColors.textMuted;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(progressIcon, size: 20, color: progressColor),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Progres Penanganan Laporan',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Divider(color: AppColors.divider, height: 1),
+          const SizedBox(height: 16),
+
+          // Overall Status Banner
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: progressColor.withAlpha(25),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: progressColor.withAlpha(80)),
+            ),
+            child: Row(
+              children: [
+                Icon(progressIcon, color: progressColor, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    progressTitle,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: progressColor,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Assignment info (when penugasan exists)
+          if (penugasan != null) ...[
+            _buildInfoRow(
+              icon: Icons.groups_rounded,
+              label: 'Tim Ditugaskan',
+              value: penugasan.timNama ?? penugasan.idTim,
+              valueWeight: FontWeight.w700,
+            ),
+            _buildInfoRow(
+              icon: Icons.military_tech_rounded,
+              label: 'Ketua Tim',
+              value: penugasan.ketuaTimNama ?? penugasan.idKetuaTim,
+            ),
+            if (penugasan.armadaNama != null)
+              _buildInfoRow(
+                icon: Icons.directions_car_rounded,
+                label: 'Armada',
+                value: '${penugasan.armadaNama} (${penugasan.armadaNomor ?? '-'})',
+              ),
+            _buildInfoRow(
+              icon: Icons.access_time_rounded,
+              label: 'Waktu Tugas',
+              value: penugasan.waktuPenugasan ?? '-',
+            ),
+            _buildInfoRow(
+              icon: Icons.info_outline_rounded,
+              label: 'Status Tugas',
+              value: penugasan.statusDisplay,
+            ),
+          ],
+
+          // Penanganan timeline (when penanganan exists)
+          if (penanganan != null) ...[
+            if (penugasan != null) const SizedBox(height: 8),
+            const Text(
+              'Timeline Penanganan',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            _buildTimelineStep(
+              stepNumber: 1,
+              title: 'Menuju Lokasi',
+              timestamp: penanganan.waktuBerangkat,
+              isDone: penanganan.isDiLokasi || penanganan.isSelesai,
+              isCurrent: penanganan.isMenujuLokasi,
+              isLast: false,
+            ),
+            _buildTimelineStep(
+              stepNumber: 2,
+              title: 'Tiba di Lokasi',
+              timestamp: penanganan.waktuTiba,
+              isDone: penanganan.isSelesai,
+              isCurrent: penanganan.isDiLokasi,
+              isLast: false,
+            ),
+            _buildTimelineStep(
+              stepNumber: 3,
+              title: 'Penanganan Selesai',
+              timestamp: penanganan.waktuSelesai,
+              isDone: penanganan.isSelesai,
+              isCurrent: false,
+              isLast: true,
+            ),
+            // Documentation count
+            if (alarm.dokumentasiCount != null && alarm.dokumentasiCount! > 0) ...[
+              const SizedBox(height: 8),
+              _buildInfoRow(
+                icon: Icons.photo_library_rounded,
+                label: 'Dokumentasi',
+                value: '${alarm.dokumentasiCount} file',
+                valueColor: AppColors.info,
+              ),
+            ],
+            // View penanganan link for staff
+            if (isStaffOrAdmin) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                  label: const Text(
+                    'LIHAT DETAIL PENANGANAN',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: AppColors.primary),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.of(context).pushNamed(
+                      AppRoutes.penangananDetail,
+                      arguments: penanganan.idPenanganan,
+                    );
+                  },
+                ),
+              ),
+            ],
+          ],
         ],
       ),
     );
@@ -390,6 +686,9 @@ class _AlarmDetailScreenState extends State<AlarmDetailScreen> {
                     ),
                     const SizedBox(height: 24),
                   ],
+
+                  // Workflow Progress Section
+                  _buildWorkflowProgress(alarm, context, isStaffOrAdmin: isStaffOrAdmin),
 
                   // Role-Based Operational Action Controls (Admin & Staff)
                   if (isStaffOrAdmin) ...[

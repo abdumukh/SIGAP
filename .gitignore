@@ -1,0 +1,77 @@
+# Root .gitignore for SIGAP monorepo
+
+# Laravel API secrets
+sigap-api/.env
+sigap-api/.env.*
+sigap-api/.env.production
+sigap-api/*.key
+sigap-api/storage/*.key
+
+# Firebase credentials
+*firebase*service*account*.json
+*service*account*.json
+firebase-adminsdk*.json
+google-services.json
+GoogleService-Info.plist
+google-services.plist
+
+# Supabase credentials
+*.supabase.key
+supabase*.json
+
+# Environment files
+*.env
+*.env.local
+*.env.production
+*.env.staging
+
+# Keys and certificates
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# IDE / Editor
+.idea/
+.vscode/
+.fleet/
+.zed/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build outputs
+sigap-api/public/build
+sigap-api/public/storage
+sigap-api/public/hot
+sigap-mobile/build/
+sigap-mobile/.dart_tool/
+sigap-mobile/*.lock
+
+# Testing
+*.phpunit.result.cache
+
+# Logs
+*.log
+sigap-api/storage/logs/*.log
+
+# Vendor / Dependencies
+sigap-api/vendor/
+sigap-mobile/.pub-cache/
+sigap-mobile/ios/Pods/
+sigap-mobilesigap-mobile/macos/Pods/
+
+# Auth
+auth.json
+
+# CI/CD
+.gitlab-ci.yml.bak
+.github/workflows/*.bak
+
+# Temporary
+*.tmp
+*.temp

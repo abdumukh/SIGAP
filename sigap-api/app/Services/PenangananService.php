@@ -2,11 +2,16 @@
 
 namespace App\Services;
 
+use App\Models\Armada;
+use App\Models\Alarm;
 use App\Models\Penanganan;
 use App\Models\Penugasan;
+use App\Models\Petugas;
+use App\Services\NotifikasiService;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class PenangananService
@@ -35,12 +40,12 @@ class PenangananService
         $actor = $this->actorService->resolveActor($user);
 
         if ($actor === 'admin') {
-            return Penanganan::with(['alarm', 'penugasan', 'petugas'])
+            return Penanganan::with(['alarm', 'penugasan', 'petugas', 'korban', 'logistik'])
                 ->orderByDesc('created_at')
                 ->get();
         }
 
-        return Penanganan::with(['alarm', 'penugasan', 'petugas'])
+        return Penanganan::with(['alarm', 'penugasan', 'petugas', 'korban', 'logistik'])
             ->where(function ($query) use ($user) {
                 $query->where('id_petugas', $user->id_petugas)
                     ->orWhereHas('penugasan', function ($q) use ($user) {
@@ -58,7 +63,7 @@ class PenangananService
 
     public function getPenangananById(string $idPenanganan): ?Penanganan
     {
-        return Penanganan::with(['alarm', 'penugasan', 'petugas'])
+        return Penanganan::with(['alarm', 'penugasan', 'petugas', 'korban', 'logistik'])
             ->where('id_penanganan', $idPenanganan)
             ->first();
     }
@@ -102,6 +107,9 @@ class PenangananService
                 'note'              => $data['note'] ?? null,
             ]);
 
+            // Notify alarm owner and admin
+            $this->notifyPenangananStarted($penanganan, $penugasan);
+
             return $this->getPenangananById($penanganan->id_penanganan);
         });
     }
@@ -143,6 +151,106 @@ class PenangananService
 
         $penanganan->save();
 
+        if ($targetStatus === 'selesai') {
+            /** @var Penugasan|null $penugasan */
+            $penugasan = Penugasan::where('id_penugasan', $penanganan->id_penugasan)->first();
+            if ($penugasan) {
+                $penugasan->status_penugasan = 'selesai';
+                $penugasan->save();
+
+                if ($penugasan->id_armada) {
+                    Armada::where('id_armada', $penugasan->id_armada)
+                        ->update(['status_armada' => 'tersedia']);
+                }
+            }
+
+            Alarm::where('id_alarm', $penanganan->id_alarm)
+                ->update(['status_alarm' => 'selesai']);
+        }
+
+        // Notify on status change
+        $this->notifyPenangananStatusUpdated($penanganan, $targetStatus);
+
         return $this->getPenangananById($penanganan->id_penanganan);
+    }
+
+    private function notifyPenangananStarted(Penanganan $penanganan, Penugasan $penugasan): void
+    {
+        $notifikasiService = app(NotifikasiService::class);
+        $alarm = Alarm::find($penanganan->id_alarm);
+
+        if (!$alarm) return;
+
+        // Notify masyarakat owner
+        $notifikasiService->createNotifikasi(
+            $alarm->id_pengguna,
+            'masyarakat',
+            'PENANGANAN_STARTED',
+            'Tim Sedang Menuju Lokasi',
+            "Tim penanganan sedang menuju lokasi kejadian {$alarm->jenis_darurat} ({$alarm->id_alarm}).",
+            ['id_alarm' => $alarm->id_alarm, 'id_penanganan' => $penanganan->id_penanganan]
+        );
+
+        // Notify admin
+        $admins = \App\Models\Admin::all();
+        foreach ($admins as $admin) {
+            $notifikasiService->createNotifikasi(
+                $admin->id_admin,
+                'admin',
+                'PENANGANAN_STARTED',
+                'Penanganan Dimulai',
+                "Penanganan untuk {$alarm->jenis_darurat} ({$alarm->id_alarm}) telah dimulai oleh petugas.",
+                ['id_alarm' => $alarm->id_alarm, 'id_penanganan' => $penanganan->id_penanganan]
+            );
+        }
+    }
+
+    private function notifyPenangananStatusUpdated(Penanganan $penanganan, string $status): void
+    {
+        $notifikasiService = app(NotifikasiService::class);
+        $alarm = Alarm::find($penanganan->id_alarm);
+
+        if (!$alarm) return;
+
+        $type = match ($status) {
+            'di_lokasi' => 'PENANGANAN_ARRIVED',
+            'selesai'   => 'PENANGANAN_COMPLETED',
+            default     => 'PENANGANAN_UPDATED',
+        };
+
+        $title = match ($status) {
+            'di_lokasi' => 'Tim Tiba di Lokasi',
+            'selesai'   => 'Penanganan Selesai',
+            default     => 'Status Penanganan Diperbarui',
+        };
+
+        $message = match ($status) {
+            'di_lokasi' => "Tim penanganan telah tiba di lokasi kejadian {$alarm->jenis_darurat} ({$alarm->id_alarm}).",
+            'selesai'   => "Penanganan untuk {$alarm->jenis_darurat} ({$alarm->id_alarm}) telah selesai.",
+            default     => "Status penanganan {$penanganan->id_penanganan} telah diperbarui.",
+        };
+
+        // Notify masyarakat
+        $notifikasiService->createNotifikasi(
+            $alarm->id_pengguna,
+            'masyarakat',
+            $type,
+            $title,
+            $message,
+            ['id_alarm' => $alarm->id_alarm, 'id_penanganan' => $penanganan->id_penanganan]
+        );
+
+        // Notify admin
+        $admins = \App\Models\Admin::all();
+        foreach ($admins as $admin) {
+            $notifikasiService->createNotifikasi(
+                $admin->id_admin,
+                'admin',
+                $type,
+                $title,
+                $message,
+                ['id_alarm' => $alarm->id_alarm, 'id_penanganan' => $penanganan->id_penanganan]
+            );
+        }
     }
 }

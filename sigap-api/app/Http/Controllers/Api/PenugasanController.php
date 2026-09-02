@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StorePenugasanRequest;
+use App\Http\Requests\UpdatePenugasanRequest;
 use App\Http\Resources\PenugasanResource;
 use App\Services\AuthorizationService;
 use App\Services\PenugasanService;
@@ -20,16 +21,18 @@ class PenugasanController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        if (!$this->authService->canManageTim($request->user())) {
+        if (!$this->authService->canListPenugasan($request->user())) {
             return response()->json([
                 'status'  => 'error',
-                'message' => 'Forbidden. Hanya Admin yang dapat mengakses penugasan pada tahap ini.',
+                'message' => 'Forbidden. Akses ditolak untuk role ini.',
             ], 403);
         }
 
         return response()->json([
             'status' => 'success',
-            'data'   => PenugasanResource::collection($this->penugasanService->getPenugasanList()),
+            'data'   => PenugasanResource::collection(
+                $this->penugasanService->getPenugasanListForUser($request->user())
+            ),
         ]);
     }
 
@@ -53,10 +56,10 @@ class PenugasanController extends Controller
 
     public function show(Request $request, string $id): JsonResponse
     {
-        if (!$this->authService->canManageTim($request->user())) {
+        if (!$this->authService->canListPenugasan($request->user())) {
             return response()->json([
                 'status'  => 'error',
-                'message' => 'Forbidden. Hanya Admin yang dapat melihat detail penugasan pada tahap ini.',
+                'message' => 'Forbidden. Akses ditolak untuk role ini.',
             ], 403);
         }
 
@@ -69,9 +72,42 @@ class PenugasanController extends Controller
             ], 404);
         }
 
+        if (!$this->authService->canViewPenugasan($request->user(), $penugasan)) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Forbidden. Anda tidak memiliki akses untuk melihat penugasan ini.',
+            ], 403);
+        }
+
         return response()->json([
             'status' => 'success',
             'data'   => new PenugasanResource($penugasan),
+        ]);
+    }
+
+    public function update(UpdatePenugasanRequest $request, string $id): JsonResponse
+    {
+        if (!$this->authService->canUpdatePenugasanStatus($request->user())) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Forbidden. Hanya Admin yang dapat memperbarui status penugasan.',
+            ], 403);
+        }
+
+        try {
+            $penugasan = $this->penugasanService->updatePenugasanStatus($id, $request->validated());
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => $e->getMessage(),
+                'errors'  => $e->errors(),
+            ], 422);
+        }
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'Status penugasan berhasil diperbarui',
+            'data'    => new PenugasanResource($penugasan),
         ]);
     }
 }

@@ -3,6 +3,10 @@ import '../../../core/constants/app_colors.dart';
 import '../../../routes/app_routes.dart';
 import '../../alarm/presentation/alarm_controller.dart';
 import '../../auth/presentation/auth_controller.dart';
+import '../../laporan/presentation/laporan_controller.dart';
+import '../../monitoring/presentation/monitoring_controller.dart';
+import '../../notifikasi/presentation/notifikasi_controller.dart';
+import '../../notifikasi/widgets/notification_badge_icon.dart';
 import '../../penugasan/presentation/penugasan_controller.dart';
 import '../../tim/presentation/tim_controller.dart';
 
@@ -11,6 +15,9 @@ class AdminDashboardScreen extends StatelessWidget {
   final AlarmController alarmController;
   final TimController timController;
   final PenugasanController penugasanController;
+  final NotifikasiController notifikasiController;
+  final MonitoringController monitoringController;
+  final LaporanController laporanController;
 
   const AdminDashboardScreen({
     super.key,
@@ -18,6 +25,9 @@ class AdminDashboardScreen extends StatelessWidget {
     required this.alarmController,
     required this.timController,
     required this.penugasanController,
+    required this.notifikasiController,
+    required this.monitoringController,
+    required this.laporanController,
   });
 
   Future<void> _handleLogout(BuildContext context) async {
@@ -122,6 +132,7 @@ class AdminDashboardScreen extends StatelessWidget {
         title: const Text('Dashboard Administrator'),
         backgroundColor: AppColors.surface,
         actions: [
+          NotificationBadgeIcon(notifikasiController: notifikasiController),
           IconButton(
             icon: const Icon(Icons.logout_rounded, color: AppColors.emergencyRed),
             tooltip: 'Logout',
@@ -256,6 +267,39 @@ class AdminDashboardScreen extends StatelessWidget {
                 iconBgColor: AppColors.primary.withAlpha(25),
                 title: 'Penugasan Tim Lapangan',
                 subtitle: 'Tugaskan tim untuk alarm yang sudah diverifikasi',
+              ),
+
+              // Operational Card 4: Monitoring Penanganan
+              _buildMenuCard(
+                context: context,
+                route: AppRoutes.penanganan,
+                icon: Icons.medical_services_rounded,
+                iconColor: AppColors.rolePetugas,
+                iconBgColor: AppColors.rolePetugas.withAlpha(25),
+                title: 'Monitoring Penanganan',
+                subtitle: 'Pantau status penanganan dan dokumentasi lapangan',
+              ),
+
+              // Operational Card 5: Monitoring Dashboard
+              _buildMenuCard(
+                context: context,
+                route: AppRoutes.monitoring,
+                icon: Icons.dashboard_rounded,
+                iconColor: AppColors.info,
+                iconBgColor: AppColors.infoLight,
+                title: 'Dashboard Monitoring',
+                subtitle: 'Statistik operasional dan pemantauan real-time',
+              ),
+
+              // Operational Card 6: Laporan
+              _buildMenuCard(
+                context: context,
+                route: AppRoutes.laporan,
+                icon: Icons.assessment_rounded,
+                iconColor: AppColors.roleAdmin,
+                iconBgColor: AppColors.roleAdmin.withAlpha(25),
+                title: 'Laporan & Rekap',
+                subtitle: 'Rekap data alarm, penugasan, penanganan, pengguna, petugas',
               ),
 
               const SizedBox(height: 16),
